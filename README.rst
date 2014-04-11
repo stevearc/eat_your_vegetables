@@ -55,7 +55,7 @@ Running
 =======
 Eat Your Vegetables provides CLI commands that wrap celery. Just specify the
 config file as the first argument, and the rest of the arguments will be passed
-on to the celery commands as per usual. There are three commands::
+on to the celery commands as per usual. There are three commands:
 
 * **nom-worker** - Starts a celery worker
 * **nom-beat** - Starts celerybeat 

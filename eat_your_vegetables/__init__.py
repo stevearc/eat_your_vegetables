@@ -59,6 +59,9 @@ def read_config(conf_file):
                 return value
         walk(settings, add_vars)
 
+    settings.setdefault('celery', {})
+    settings['celery'].setdefault('CELERYD_HIJACK_ROOT_LOGGER', False)
+
     return TaskConfigurator(settings)
 
 
@@ -130,7 +133,6 @@ class TaskConfigurator(object):
 
     def __init__(self, settings):
         self.settings = settings
-        self.settings.setdefault('celery', {})
         self.mixins = []
         self.registry = Registry(settings)
         self.after_setup = []
@@ -156,7 +158,7 @@ class TaskConfigurator(object):
             callback()
 
 
-def init_celery(conf_file):
+def init_celery(conf_file, configure_log=True):
     """ Initialize the global celery app objects """
     # pylint: disable=W0603
     global celery
@@ -167,7 +169,7 @@ def init_celery(conf_file):
 
     # configure logging
     log_config = config.settings.get('logging', None)
-    if log_config is not None:
+    if configure_log and log_config is not None:
         logging.config.dictConfig(log_config)
 
     for package in config.settings.get('include', []):
