@@ -1,4 +1,6 @@
 """ Organizational tool for celery """
+import os
+import six
 import re
 
 import importlib
@@ -17,6 +19,7 @@ __version__ = '0.0.0'
 class ImportWarningClass(object):
 
     """ Dummy class that raises exceptions if called before replaced """
+
     def __call__(self, *_, **__):
         raise ValueError("You must set up eat_your_vegetables before "
                          "importing any files that contain tasks")
@@ -30,13 +33,31 @@ lock = ImportWarningClass()
 celery = ImportWarningClass()
 
 
+def walk(data, callback):
+    """ Walk a dictionary and replace values """
+    for key, value in data.items():
+        if isinstance(value, dict):
+            walk(value, callback)
+        else:
+            data[key] = callback(value)
+
+
 def read_config(conf_file):
     """ Read conf file and return a :class:`TaskConfigurator` """
     if isinstance(conf_file, dict):
         settings = conf_file
     else:
         with open(conf_file, 'r') as infile:
-            settings = yaml.safe_load(conf_file)
+            settings = yaml.safe_load(infile)
+        here = os.path.dirname(os.path.abspath(conf_file))
+
+        def add_vars(value):
+            """ Inject string formatted variables into config """
+            if isinstance(value, six.string_types):
+                return value.format(here=here)
+            else:
+                return value
+        walk(settings, add_vars)
 
     return TaskConfigurator(settings)
 
@@ -80,6 +101,7 @@ class BaseTask(BaseTaskShell):  # pylint: disable=W0223
 class Registry(object):
 
     """ Simple container object for getting/setting attributes """
+
     def __init__(self, settings):
         self.settings = settings
 
@@ -162,7 +184,8 @@ def init_celery(conf_file):
         factory_name = 'eat_your_vegetables.locks:ProcessLockFactory'
     elif factory_name == 'file':
         factory_name = 'eat_your_vegetables.locks:FileLockFactory'
-    factory = pkg_resources.EntryPoint.parse('x=' + factory_name).load(False)(config.settings)
+    factory = pkg_resources.EntryPoint.parse(
+        'x=' + factory_name).load(False)(config.settings)
     lock = locks.LockAnnotation(factory)
 
     celery = Celery(__package__, config_source=config.settings['celery'])
