@@ -1,0 +1,2 @@
+#!/bin/bash -e
+./venv/bin/python git_hooks/hook.py

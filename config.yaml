@@ -1,0 +1,27 @@
+celery:
+  CELERY_RESULT_BACKEND: database
+  CELERY_RESULT_DBURI: sqlite:///{here}/celerydb.sqlite
+  BROKER_URL: sqla+sqlite:///{here}/celerydb.sqlite
+  CELERY_IMPORTS: []
+  CELERY_TASK_RESULT_EXPIRES: 3600
+logging:
+  version: 1
+  formatters:
+    simple:
+      format: "%(levelname)s %(asctime)s %(module)s %(message)s"
+
+  root:
+    handlers:
+      - console
+    level: WARNING
+  loggers:
+    eat_your_vegetables:
+      handlers:
+        - console
+      level: DEBUG
+      propagate: false
+
+  handlers:
+    console:
+      class: logging.StreamHandler
+      formatter: simple
