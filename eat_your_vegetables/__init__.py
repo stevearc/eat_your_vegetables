@@ -186,6 +186,8 @@ def init_celery(conf_file, configure_log=True):
         factory_name = 'eat_your_vegetables.locks:ProcessLockFactory'
     elif factory_name == 'file':
         factory_name = 'eat_your_vegetables.locks:FileLockFactory'
+    elif factory_name == 'redis':
+        factory_name = 'eat_your_vegetables.locks:RedisLockFactory'
     factory = pkg_resources.EntryPoint.parse(
         'x=' + factory_name).load(False)(config.settings)
     lock = locks.LockAnnotation(factory)
