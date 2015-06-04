@@ -1,19 +1,21 @@
 """ Organizational tool for celery """
 import os
-import six
-import re
 
 import importlib
 import logging.config
+import pkg_resources
+import six
 import yaml
 from celery import Celery, Task
 from celery.datastructures import ExceptionInfo
 from celery.states import SUCCESS, FAILURE
-import pkg_resources
 
 from . import locks
 
+
 __version__ = '0.0.0'
+
+LOG = logging.getLogger(__name__)
 
 
 class ImportWarningClass(object):
@@ -68,13 +70,15 @@ def read_config(conf_file):
 class BaseTaskShell(Task):  # pylint: disable=W0223
 
     """ Base class for tasks """
-    abstract = True
     config = None
     callbacks = []
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         for callback in self.callbacks:
-            callback(self, status, retval, task_id, args, kwargs, einfo)
+            try:
+                callback(self, status, retval, task_id, args, kwargs, einfo)
+            except Exception:
+                LOG.exception("Error during task callback")
 
     def __call__(self, *args, **kwargs):
         einfo = None
@@ -149,8 +153,9 @@ class TaskConfigurator(object):
             Same format as the Celery CELERYBEAT_SCHEDULE entries
 
         """
-        self.settings['celery'].setdefault('CELERYBEAT_SCHEDULE',
-                                           {})[name] = config_dict
+        schedule = self.settings['celery'].setdefault('CELERYBEAT_SCHEDULE',
+                                                      {})
+        schedule[name] = config_dict
 
     def finish(self):
         """ Called after all global celery objects have been created """
@@ -176,8 +181,9 @@ def init_celery(conf_file, configure_log=True):
         mod = importlib.import_module(package)
         mod.include_tasks(config)
 
+    # Replace BaseTask with a new class that inherits from all the mixins
     BaseTask = type('BaseTask', tuple(config.mixins + [BaseTaskShell]),
-                    {'abstract': True, 'config': config})
+                    {'config': config})
 
     factory_name = config.settings.get('lock_factory', 'none')
     if factory_name == 'none':
@@ -188,8 +194,9 @@ def init_celery(conf_file, configure_log=True):
         factory_name = 'eat_your_vegetables.locks:FileLockFactory'
     elif factory_name == 'redis':
         factory_name = 'eat_your_vegetables.locks:RedisLockFactory'
-    factory = pkg_resources.EntryPoint.parse(
-        'x=' + factory_name).load(False)(config.settings)
+    entry_point = pkg_resources.EntryPoint.parse('x=' + factory_name)
+    factory = entry_point.load(False)(config.settings)
+    # Replace global 'lock' with a lock factory annotation
     lock = locks.LockAnnotation(factory)
 
     celery = Celery(__package__, config_source=config.settings['celery'])

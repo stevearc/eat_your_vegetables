@@ -29,7 +29,7 @@ class LockAnnotation(object):
     def __init__(self, factory):
         self._factory = factory
 
-    def __call__(self, key, expires=60, timeout=10):
+    def __call__(self, key, expires=120, timeout=60):
         """ Decorator for synchronizing a request """
         def wrapper(fxn):
             """ Wrapper for the synchronized request handler """
@@ -41,7 +41,7 @@ class LockAnnotation(object):
             return wrapped
         return wrapper
 
-    def inline(self, key, expires=60, timeout=10):
+    def inline(self, key, expires=120, timeout=60):
         """ Get a lock instance from the factory """
         return self._factory(key, expires=expires, timeout=timeout)
 
